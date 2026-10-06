@@ -84,10 +84,10 @@
 // =====================================================================
 const SCREEN = { w: 320, h: 240 };
 const CHAR = { bg: "#F9503C", ink: "#121212", halo: "#FFFFFF" };
-// 말풍선 채움색. 민트는 토마토 배경의 보색 쪽. 글자 그림자는 채움색을 한 톤 눌러서.
+// 말풍선 채움색. 민트는 토마토 배경의 보색 쪽. 글자 그림자는 흰색 (흰 말풍선일 때만 분홍).
 const FILLS = {
-  mint:   { label: "민트",  fill: "#BFF2E1", shadow: "#6FCDB0" },
-  yellow: { label: "노랑",  fill: "#FFEC8F", shadow: "#F2B54E" },
+  mint:   { label: "민트",  fill: "#BFF2E1", shadow: "#FFFFFF" },
+  yellow: { label: "노랑",  fill: "#FFEC8F", shadow: "#FFFFFF" },
   white:  { label: "흰색",  fill: "#FFFFFF", shadow: "#F2A3C4" },
 };
 const FONT_DIR = location.pathname.includes("/docs/subtitle/") ? "../../fonts/" : "fonts/";
@@ -115,7 +115,7 @@ const SAMPLES = {
   mix: "고양이는 일본어로 猫(ねこ), 중국어로 猫(māo), 프랑스어로 chat(샤)래. Ça va?",
 };
 
-const opt = { d: 2, font: "DOSPilgi", ease: "smooth", face: 4, style: "tailDouble", fill: "mint", mode: "rollup", render: "browser", zoom: "fit", auto: true };
+const opt = { d: 2, font: "DOSPilgi", ease: "step", face: 4, style: "tailDouble", fill: "mint", mode: "rollup", render: "browser", zoom: "fit", auto: true };
 const fillOf = () => FILLS[opt.fill];
 
 const loaded = {};
@@ -306,6 +306,7 @@ FACE.mount(faceCanvas);
 
 const now = () => performance.now() / 1000;
 const clock = new SubtitleClock();
+let roll = { from: 0, to: 0, t0: 0 };
 let phase = "idle", faceP = 0, bubbleP = 0, scrollPx = 0, holdUntil = 0, idleSince = now(), sampleIdx = 0, last = now();
 
 function geometry() {
@@ -340,13 +341,20 @@ function shape(b, inflate, dx, dy, color, tail) {
     if (hw > 0) ctx.fillRect(cx - hw, y - j * u + dy, hw * 2, u);
   }
 }
-function drawBubble(g, e) {
-  if (e <= 0.02) return null;
-  const u = g.u;
-  // 꼬리 끝(얼굴 쪽)을 기준점으로 커지고 줄어든다. 크기는 항상 u 단위로 스냅.
+// 같은 시간 안에서 n단계로 뚝뚝 끊는다 (도트 느낌)
+const STEPS = 4;
+const quant = (v) => opt.ease === "step" ? v : Math.round(v * STEPS) / STEPS;
+function drawBubble(g, p) {
+  if (p <= 0.02) return null;
+  const u = g.u, ease = EASE[opt.ease];
+  // 순서: 가로로 먼저 띠처럼 펼치고(앞 45%) → 세로로 연다(뒤 55%). 닫힐 땐 거꾸로.
+  const SPLIT = 0.45;
+  const ex = quant(ease(Math.min(1, p / SPLIT)));
+  const ey = p <= SPLIT ? 0 : quant(ease((p - SPLIT) / (1 - SPLIT)));
   const snap = (v) => Math.max(2 * u, Math.round(v / u) * u);
-  const w = Math.min(SCREEN.w - 4 - 2 * u, snap(g.w * (0.18 + 0.82 * e)));
-  const h = Math.min(SCREEN.h - g.y - 2 - 2 * u, snap(g.h * (0.12 + 0.88 * e)));
+  const band = 8 * u;   // 가로로 펼쳐질 때의 띠 높이
+  const w = Math.min(SCREEN.w - 4 - 2 * u, snap(g.w * (0.08 + 0.92 * ex)));
+  const h = Math.min(SCREEN.h - g.y - 2 - 2 * u, snap(band + (g.h - band) * ey));
   const cx = Math.round((g.x + g.w / 2) / u) * u;
   const b = { ...g, w, h, x: cx - Math.round(w / 2 / u) * u, cx };
   const tail = opt.style !== "double";
@@ -388,10 +396,13 @@ function drawText(g, b, t) {
   let cur = 0;
   lines.forEach((l, i) => { if (shown > l.start) cur = i; });
   const target = Math.max(0, cur - g.lines + 1) * g.lineH;
-  if (scrollPx > target) scrollPx = target;
-  if (scrollPx < target) {
-    const speed = opt.ease === "step" ? Math.ceil(g.lineH / 2) : Math.max(1, Math.round(g.lineH * 0.18));
-    scrollPx = Math.min(target, scrollPx + speed);
+  // 롤업: 한 줄을 약 0.12초 동안 3칸으로 탁탁 끊어 올린다 (속도는 이전과 같음)
+  if (target !== roll.to) roll = { from: scrollPx, to: target, t0: t };
+  if (target < scrollPx) scrollPx = target;
+  else {
+    const k = Math.min(1, (t - roll.t0) / 0.12);
+    const n = opt.ease === "step" ? 2 : 3;
+    scrollPx = Math.round(roll.from + (roll.to - roll.from) * Math.ceil(k * n - 1e-6) / n);
   }
   const left = b.x + g.pad;
   ctx.save();
@@ -447,7 +458,7 @@ function frame() {
   const fy = Math.round(((SCREEN.h - 180) / 2) * (1 - fe) + g.faceTop * fe);
   ctx.drawImage(faceCanvas, Math.round((SCREEN.w - fw) / 2), fy, fw, fh);
 
-  const b = drawBubble(g, ease(bubbleP));
+  const b = drawBubble(g, bubbleP);
   stat = { g, shown: 0, total: clock.text.length };
   if (b && bubbleP >= 1) stat = { g, ...drawText(g, b, t) };
   requestAnimationFrame(frame);
@@ -459,7 +470,7 @@ function frame() {
 function say(text) {
   timers.forEach(clearTimeout); timers = [];
   textHasKana = KANA.test(text);
-  clock.reset(); scrollPx = 0; holdUntil = 0;
+  clock.reset(); scrollPx = 0; holdUntil = 0; roll = { from: 0, to: 0, t0: 0 };
   phase = "thinking";
   mockStream(text, (e) => {
     const t = now();
@@ -481,7 +492,7 @@ function nextSample() {
 const CHOICES = {
   d: () => [1, 2, 2.5, 3].map((v) => [v, `${v}× · ${FONTS[opt.font].native * v}px`]),
   font: () => Object.entries(FONTS).map(([k, f]) => [k, `${f.label} ${f.native}`]),
-  ease: () => [["smooth", "스르륵"], ["bouncy", "통통"], ["step", "계단"]],
+  ease: () => [["step", "계단"], ["smooth", "스르륵"], ["bouncy", "통통"]],
   face: () => [[5, "1/2"], [4, "2/5"], [3, "3/10"]],
   style: () => [["tailDouble", "꼬리 + 이중"], ["tail", "꼬리"], ["double", "이중 테두리"]],
   fill: () => Object.entries(FILLS).map(([k, f]) => [k, f.label]),
