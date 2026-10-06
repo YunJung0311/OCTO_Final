@@ -200,7 +200,14 @@ function glyph(ch, color) {
 }
 // 레이아웃 폭은 "도트" 단위 (서체 네이티브 픽셀). 화면 픽셀 = 도트 × d
 const tracking = () => FONTS[opt.font].tracking || 0;
-const charW = (ch) => glyph(ch, "#000000").w + tracking();
+// 글자마다 확대 배율. 주 서체는 d배. 그리드가 다른 폴백(Fusion 12px)은
+// 주 서체 글자 높이에 가장 가까운 "정수" 배율로 따로 키운다 (예: 도스필기 2.5× = 40px → Fusion 3× = 36px).
+const isFallbackGlyph = (gl) => gl.native !== FONTS[opt.font].native;
+const scaleOf = (gl, d) => isFallbackGlyph(gl) ? Math.max(1, Math.round((FONTS[opt.font].native * d) / gl.native)) : d;
+const charW = (ch) => {
+  const gl = glyph(ch, "#000000");
+  return (gl.w * scaleOf(gl, opt.d)) / opt.d + (isFallbackGlyph(gl) ? 0 : tracking());
+};
 
 // =====================================================================
 // 줄바꿈 (어절 단위, 긴 어절은 글자 단위)
@@ -375,20 +382,21 @@ function drawBubble(g, p) {
 function drawChar(ch, x, y, g) {
   if (opt.render === "binary") {
     const hi = glyph(ch, fillOf().light), sh = glyph(ch, fillOf().shadow), gl = glyph(ch, CHAR.ink);
-    ctx.drawImage(hi.c, x - g.d, y - g.d, hi.w * g.d, hi.h * g.d);
-    ctx.drawImage(sh.c, x + g.d, y + g.d, sh.w * g.d, sh.h * g.d);
-    ctx.drawImage(gl.c, x, y, gl.w * g.d, gl.h * g.d);
-    return (gl.w + tracking()) * g.d;
+    const k = scaleOf(gl, g.d), oy = y + gl.base * g.d - gl.base * k;   // 기준선 맞춤
+    ctx.drawImage(hi.c, x - g.d, oy - g.d, hi.w * k, hi.h * k);
+    ctx.drawImage(sh.c, x + g.d, oy + g.d, sh.w * k, sh.h * k);
+    ctx.drawImage(gl.c, x, oy, gl.w * k, gl.h * k);
+    return charW(ch) * g.d;
   }
   // 기본: 서체 글리프를 브라우저가 그대로 그린다 (모양을 손대지 않음)
   const gl = glyph(ch, CHAR.ink);
   const sd = Math.max(1, Math.round(g.d));
-  ctx.font = `${gl.native * g.d}px "${gl.family}"`;
+  ctx.font = `${gl.native * scaleOf(gl, g.d)}px "${gl.family}"`;
   ctx.textBaseline = "alphabetic";
   ctx.fillStyle = fillOf().light; ctx.fillText(ch, x - sd, y + gl.base * g.d - sd);   // 위쪽 흰 하이라이트
   ctx.fillStyle = fillOf().shadow; ctx.fillText(ch, x + sd, y + gl.base * g.d + sd);  // 아래쪽 그림자
   ctx.fillStyle = CHAR.ink; ctx.fillText(ch, x, y + gl.base * g.d);
-  return (gl.w + tracking()) * g.d;
+  return charW(ch) * g.d;
 }
 
 function drawText(g, b, t) {
