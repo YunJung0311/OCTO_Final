@@ -110,7 +110,7 @@ const CHARS = [
   { id: "hyosun",       name: "일단",       bg: "#2FD4C6", ink: "#1C2A63", font: "DOSGothic", d: 2.5, fill: "comp", place: "below" },
   { id: "gaeun",        name: "새근이",     bg: "#E9EEFB", ink: "#16265C", font: "DOSGothic", d: 2.5, fill: "comp", place: "below" },
   { id: "eunseol",      name: "삐",         bg: "#D4FF00", ink: "#12205C", font: "neodgm",    d: 2.5, fill: "comp", place: "below" },
-  { id: "soyeon",       name: "오히려좋아", bg: "#FEE14B", ink: "#12205C", font: "neodgm",    d: 2.5, fill: "comp", place: "below" },
+  { id: "soyeon",       name: "오히려좋아", bg: "#FEE14B", ink: "#12205C", font: "neodgm",    d: 2.5, fill: "comp", place: "below", compShift: -40 },   // 삐와 보색이 겹쳐서 하늘색 쪽으로
   { id: "minjeong",     name: "헐",         bg: "#FF4AA0", ink: "#13203C", font: "DOSPilgi",  d: 2.5, fill: "comp", place: "below" },
   { id: "seoyoungchae", name: "도리",       bg: "#7590E8", ink: "#111F5E", font: "neodgm",    d: 2.5, fill: "comp", place: "below" },
   { id: "yunjung",      name: "BEAT",       bg: "#040B24", ink: "#040B24", font: "HBIOS",     d: 2.5, fill: "comp", place: "below" },
@@ -141,9 +141,9 @@ function lineFor(fill, bg) {
   if (s2 < 0.08) { const [bh, bs] = toHsl(bg); return fromHsl(bh, bs, 0.24); }
   return fromHsl(h, s2, 0.24);
 }
-function makeFills(bg) {
+function makeFills(bg, shift = 0) {
   const [h] = toHsl(bg);
-  const comp = fromHsl((h + 180) % 360, 0.75, 0.84);
+  const comp = fromHsl((h + 180 + shift + 360) % 360, 0.75, 0.84);
   const f = (label, fill, shadow) => ({ label, fill, shadow, light: "#FFFFFF", line: lineFor(fill, bg) });
   return {
     comp:   f("보색", comp, darker(comp)),
@@ -181,8 +181,7 @@ const SAMPLES = {
 
 // 확정: 꼬리 + 이중 테두리, 말할 때 얼굴 1/2, 보기 배율은 화면에 맞춤
 const opt = { d: 2.5, font: "DOSPilgi", ease: "step", face: 5, style: "tailDouble", fill: "mint", mode: "rollup", place: "below", zoom: "fit", auto: true };
-// 정수배면 서체 원본 그대로, 아니면 네이티브 크기 비트맵을 최근접 복제 (수학적으로 회색이 생길 수 없음)
-Object.defineProperty(opt, "render", { get: () => (Number.isInteger(opt.d) ? "browser" : "binary") });
+
 const fillOf = () => CHAR.fills[opt.fill];
 const PER_CHAR = ["font", "d", "fill", "place"];   // 캐릭터마다 따로 저장되는 값
 // 그릴 캐릭터로 전환: 캐릭터 값을 opt 에 싣고, 그 캐릭터의 캔버스·롤업 상태를 쓴다
@@ -392,7 +391,7 @@ FACE.mount(faceCanvas);
 let selected = CHARS[0];
 const FACE_DIR = location.pathname.includes("/docs/subtitle/") ? "faces/" : "faces/";
 for (const c of CHARS) {
-  c.fills = makeFills(c.bg);
+  c.fills = makeFills(c.bg, c.compShift);
   c.canvas = document.createElement("canvas"); c.canvas.width = SCREEN.w; c.canvas.height = SCREEN.h;
   c.ctx = c.canvas.getContext("2d"); c.ctx.imageSmoothingEnabled = false;
   c.scroll = 0; c.roll = { from: 0, to: 0, t0: 0 };
@@ -409,7 +408,7 @@ function geometry() {
   const d = opt.d, u = Math.max(1, Math.floor(d));   // 말풍선 도트는 정수 픽셀
   const base = baseMetrics();
   const glyphH = base.asc + base.desc;
-  const lineH = Math.round((glyphH + 2) * d);
+  const lineH = Math.round((glyphH + 3) * d);   // 줄 사이 3도트: 하이라이트 1 + 그림자 1 + 여백 1
   const cell = opt.face, T = 6, above = opt.place === "above";
   // 아래: 얼굴 위 · 말풍선 아래 / 위: 말풍선 위 · 얼굴 아래. 꼬리는 항상 얼굴 쪽.
   const faceY = above ? SCREEN.h - 4 - 18 * cell : 4;
@@ -419,8 +418,8 @@ function geometry() {
   const h = bottom - top;
   const pad = opt.style === "tail" ? 3 * u : 5 * u;
   const inner = h - 2 * pad;
-  const lines = Math.max(1, Math.floor((inner + 2 * d) / lineH));
-  const textTop = top + pad + Math.floor((inner - (lines * lineH - 2 * d)) / 2);
+  const lines = Math.max(1, Math.floor((inner + 3 * d) / lineH));
+  const textTop = top + pad + Math.floor((inner - (lines * lineH - 3 * d)) / 2);
   return { d, u, T, lineH, x, y: top, w, h, pad, lines, textTop, textW: Math.floor((w - 2 * pad) / d), faceY, above };
 }
 
@@ -472,26 +471,16 @@ function drawBubble(g, p) {
   return b;
 }
 
-function drawChar(ch, x, y, g) {
-  if (opt.render === "binary") {
-    const hi = glyph(ch, fillOf().light), sh = glyph(ch, fillOf().shadow), gl = glyph(ch, CHAR.ink);
-    // 모든 좌표·크기를 정수로: 최근접 복제라 회색 픽셀이 생길 수 없다
-    const k = scaleOf(gl, g.d), sd = Math.max(1, Math.round(g.d));
-    const oy = Math.round(y + gl.base * g.d - gl.base * k);   // 기준선 맞춤
-    const W = Math.round(gl.w * k), H = Math.round(gl.h * k);
-    ctx.drawImage(hi.c, x - sd, oy - sd, W, H);
-    ctx.drawImage(sh.c, x + sd, oy + sd, W, H);
-    ctx.drawImage(gl.c, x, oy, W, H);
-    return charW(ch) * g.d;
-  }
-  // 기본: 서체 글리프를 브라우저가 그대로 그린다 (모양을 손대지 않음)
-  const gl = glyph(ch, CHAR.ink);
-  const sd = Math.max(1, Math.round(g.d));
-  ctx.font = `${gl.native * scaleOf(gl, g.d)}px "${gl.family}"`;
-  ctx.textBaseline = "alphabetic";
-  ctx.fillStyle = fillOf().light; ctx.fillText(ch, x - sd, y + gl.base * g.d - sd);   // 위쪽 흰 하이라이트
-  ctx.fillStyle = fillOf().shadow; ctx.fillText(ch, x + sd, y + gl.base * g.d + sd);  // 아래쪽 그림자
-  ctx.fillStyle = CHAR.ink; ctx.fillText(ch, x, y + gl.base * g.d);
+// 글자는 서체 네이티브 크기 비트맵(서체 원본과 픽셀 단위로 같음, 실측으로 반투명 0개 확인)을 최근접으로 키운다.
+// 하이라이트·그림자도 같은 비트맵을 "정확히 1도트(k px)" 밀어서 그리므로 글자와 같은 도트 격자에 딱 붙는다.
+// pass: 0 = 위-왼쪽 흰 하이라이트, 1 = 아래-오른쪽 그림자, 2 = 글자. 줄 전체를 pass 순서로 그려서 옆 글자를 덮지 않게.
+function drawChar(ch, x, y, g, pass) {
+  const color = pass === 0 ? fillOf().light : pass === 1 ? fillOf().shadow : CHAR.ink;
+  const gl = glyph(ch, color);
+  const k = scaleOf(gl, g.d);
+  const oy = y + gl.base * g.d - gl.base * k;   // 기준선 맞춤 (폴백 서체 배율이 달라도)
+  const off = pass === 0 ? -k : pass === 1 ? k : 0;
+  ctx.drawImage(gl.c, x + off, oy + off, gl.w * k, gl.h * k);
   return charW(ch) * g.d;
 }
 
@@ -517,14 +506,16 @@ function drawText(g, b, t) {
   const inset = (opt.style === "tail" ? 1 : 3) * g.u;   // 안쪽 테두리 안에서만 글자가 보이게
   // 글자 영역만 보이게: 롤업으로 올라간 윗줄 꼬리가 테두리 아래에 남지 않도록 글자 첫 줄 위에서 자른다
   const sd = Math.max(1, Math.round(g.d));
-  const clipTop = Math.max(b.y + inset, g.textTop - sd);
+  const clipTop = Math.max(b.y + inset, g.textTop - Math.floor(g.d));
   ctx.beginPath(); ctx.rect(b.x + inset, clipTop, b.w - 2 * inset, b.y + b.h - inset - clipTop); ctx.clip();
-  lines.forEach((l, i) => {
-    let x = left;
-    const y = g.textTop + i * g.lineH - scrollPx;
-    if (y + g.lineH < b.y || y > b.y + b.h) return;
-    for (let k = l.start; k < Math.min(l.end, shown); k++) x = Math.round(x + drawChar(text[k], Math.round(x), y, g));
-  });
+  for (let pass = 0; pass < 3; pass++) {
+    lines.forEach((l, i) => {
+      let x = left;
+      const y = g.textTop + i * g.lineH - scrollPx;
+      if (y + g.lineH < b.y || y > b.y + b.h) return;
+      for (let k = l.start; k < Math.min(l.end, shown); k++) x = Math.round(x + drawChar(text[k], Math.round(x), y, g, pass));
+    });
+  }
   ctx.restore();
   if (clock.done && shown >= text.length && Math.floor(t * 2.5) % 2 === 0) {
     const u = g.u, bx = b.x + b.w - g.pad - 4 * u, by = b.y + b.h - g.pad - u;
