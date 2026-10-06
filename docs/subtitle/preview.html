@@ -1,0 +1,720 @@
+<meta charset="utf-8">
+<title>민서 픽셀 자막</title>
+<style>
+  /* 레이아웃: 왼쪽 320×240 실물 화면(정수 확대), 오른쪽 조작 패널. 좁으면 세로로 쌓임. 전시 화면과 같은 어두운 작업대 한 가지 톤으로 고정. */
+  @font-face { font-family: "neodgm-ui"; src: url("fonts/neodgm.woff2") format("woff2"), url("../../fonts/neodgm.woff2") format("woff2"); }
+  :root {
+    --bench: #17161a;      /* 작업대 */
+    --panel: #222027;
+    --line: #34313b;
+    --text: #ece9f1;
+    --dim: #9d97a8;
+    --tomato: #F9503C;     /* 민서 배경색 */
+    --font-ui: -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+    --font-pixel: "neodgm-ui", "Apple SD Gothic Neo", monospace;
+    color-scheme: dark;
+  }
+  html, body { background: var(--bench); color: var(--text); }
+  body { font: 13px/1.55 var(--font-ui); padding-inline: 16px; padding-block: 20px 32px; }
+  .wrap { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; max-width: 1240px; margin: 0 auto; }
+  .screen { display: grid; gap: 10px; min-width: 0; flex: 1 1 340px; }
+  .screen header { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  h1 { font: 400 24px/1.2 var(--font-pixel); margin: 0; letter-spacing: 0; }
+  .spec { font: 13px var(--font-pixel); color: var(--dim); }
+  .bezel { background: #0c0b0e; border-radius: 14px; padding: 14px; display: inline-block; max-width: 100%; box-sizing: border-box; }
+  #stage { display: block; image-rendering: pixelated; image-rendering: crisp-edges; max-width: 100%; }
+  .caption { color: var(--dim); font-size: 12px; max-width: 62ch; }
+  .panel { background: var(--panel); border-radius: 12px; padding: 16px; display: grid; gap: 14px; flex: 0 1 380px; min-width: 0; box-sizing: border-box; }
+  .group { display: grid; gap: 6px; }
+  .group > span { font: 12px var(--font-pixel); color: var(--dim); letter-spacing: 0.04em; }
+  .opts { display: flex; flex-wrap: wrap; gap: 6px; }
+  button { background: #2d2a33; color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; font: 13px var(--font-ui); cursor: pointer; }
+  button:hover { border-color: #57525f; }
+  button:focus-visible { outline: 2px solid var(--tomato); outline-offset: 2px; }
+  button.on { background: var(--text); color: var(--bench); border-color: var(--text); }
+  button.primary { background: var(--tomato); border-color: var(--tomato); color: #fff; }
+  button:disabled { opacity: .4; cursor: default; }
+  textarea { width: 100%; box-sizing: border-box; min-height: 76px; background: #1a191e; color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 9px; font: 13px/1.5 var(--font-ui); resize: vertical; }
+  #info { font: 12px/1.6 var(--font-ui); color: var(--dim); white-space: pre-line; font-variant-numeric: tabular-nums; }
+  hr { border: 0; border-top: 1px solid var(--line); margin: 2px 0; }
+  .all { max-width: 1240px; margin: 36px auto 0; display: grid; gap: 12px; }
+  .all-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  h2 { font: 400 20px/1.2 var(--font-pixel); margin: 0; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 16px; }
+  .card { background: var(--panel); border-radius: 12px; padding: 12px; display: grid; gap: 10px; min-width: 0; border: 1px solid transparent; }
+  .card.sel { border-color: var(--text); }
+  .card h3 { margin: 0; font: 400 16px var(--font-pixel); display: flex; gap: 8px; align-items: baseline; }
+  .card h3 small { font: 12px var(--font-ui); color: var(--dim); }
+  .card canvas { image-rendering: pixelated; image-rendering: crisp-edges; display: block; cursor: pointer; max-width: 100%; }
+  .row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .sw { width: 30px; height: 26px; padding: 0; border-radius: 6px; border: 2px solid var(--line); }
+  .sw.on { border-color: var(--text); box-shadow: 0 0 0 2px var(--bench) inset; }
+  #export { background: #1a191e; border: 1px solid var(--line); border-radius: 8px; padding: 12px; overflow-x: auto; font: 12px/1.5 ui-monospace, monospace; color: var(--text); }
+</style>
+
+<div class="wrap">
+  <section class="screen">
+    <header>
+      <h1>OCTO 픽셀 자막</h1>
+      <span class="spec">320×240 · 2인치 실물 비율</span>
+    </header>
+    <div class="bezel"><canvas id="stage" width="320" height="240"></canvas></div>
+    <p class="caption">캔버스 한 칸이 Pi 화면의 1픽셀이에요. 자동 반복이 켜져 있어서 말하기, 말풍선 열림, 롤업, 닫힘이 계속 돌아가요. 텍스트와 오디오는 Gemini Live의 도착 순서를 흉내 낸 모의 스트림이에요.</p>
+  </section>
+
+  <aside class="panel">
+    <div class="group"><span>캐릭터</span><div class="opts" data-g="who"></div></div>
+    <div class="group"><span>글자 크기</span><div class="opts" data-g="d"></div></div>
+    <div class="group"><span>서체</span><div class="opts" data-g="font"></div></div>
+    <div class="group"><span>열림 / 닫힘 움직임</span><div class="opts" data-g="ease"></div></div>
+    <div class="group"><span>말풍선 위치</span><div class="opts" data-g="place"></div></div>
+    <div class="group"><span>말풍선 색</span><div class="opts" data-g="fill"></div></div>
+    <div class="group"><span>줄넘김</span><div class="opts" data-g="mode"></div></div>
+    <hr>
+    <div class="group">
+      <span>대사</span>
+      <textarea id="text" aria-label="말할 대사">안녕! 나는 민서야. 오늘 여기 온 사람이 고양이에 대해 얘기해보래. 고양이... 고양이는 사실 액체래! 그릇에 담으면 그릇 모양이 된다니까?</textarea>
+    </div>
+    <div class="opts">
+      <button id="say" class="primary">말하기</button>
+      <button id="cut">끼어들기</button>
+      <button data-sample="ja">日本語</button>
+      <button data-sample="zh">中文</button>
+      <button data-sample="mix">섞어서</button>
+      <button id="auto">자동 반복</button>
+    </div>
+    <div id="info"></div>
+  </aside>
+</div>
+
+<section class="all">
+  <header class="all-head">
+    <h2>전체 캐릭터</h2>
+    <button id="copy">설정 복사</button>
+  </header>
+  <p class="caption">카드마다 말풍선 색과 위치를 고르면 바로 반영돼요. 카드의 화면을 누르면 위 큰 화면에서 자세히 볼 수 있어요. 다 고르셨으면 "설정 복사"를 눌러 채팅에 붙여 주세요.</p>
+  <div id="grid" class="grid"></div>
+  <pre id="export" hidden></pre>
+</section>
+
+<script src="minseo-face.js"></script>
+<script>
+"use strict";
+// =====================================================================
+// 화면 · 캐릭터 · 서체
+// =====================================================================
+const SCREEN = { w: 320, h: 240 };
+// 캐릭터별 설정 (10/06 민서 확정). place: 말풍선이 얼굴 아래(below)/위(above). face: 민서만 실시간 얼굴, 나머지는 원본 페이지 대기 화면 캡처.
+const CHARS = [
+  { id: "minseo",       name: "민서",       bg: "#F9503C", ink: "#121212", font: "DOSPilgi",  d: 2.5, fill: "comp", place: "below", live: true },
+  { id: "hyosun",       name: "일단",       bg: "#2FD4C6", ink: "#1C2A63", font: "DOSGothic", d: 2.5, fill: "comp", place: "above" },
+  { id: "gaeun",        name: "새근이",     bg: "#E9EEFB", ink: "#16265C", font: "Fusion", d: 3, fill: "mint", place: "below" },
+  { id: "eunseol",      name: "삐",         bg: "#D4FF00", ink: "#12205C", font: "neodgm",    d: 2.5, fill: "yellow", place: "below" },
+  { id: "soyeon",       name: "오히려좋아", bg: "#FEE14B", ink: "#12205C", font: "neodgm",    d: 2.5, fill: "mint", place: "above", compShift: -40 },   // 삐와 보색이 겹쳐서 하늘색 쪽으로
+  { id: "minjeong",     name: "헐",         bg: "#FF4AA0", ink: "#13203C", font: "Fusion",    d: 3, fill: "white", place: "above" },
+  { id: "seoyoungchae", name: "도리",       bg: "#7590E8", ink: "#111F5E", font: "DOSGothic", d: 2.5, fill: "white", place: "below" },
+  { id: "yunjung",      name: "BEAT",       bg: "#040B24", ink: "#040B24", font: "HBIOS",     d: 2.5, fill: "yellow", place: "above" },
+];
+// ---- 색 계산 ----
+function toHsl(hex6) {
+  let [r, g, b] = hex(hex6).map((v) => v / 255);
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2;
+  let h = 0, s2 = 0;
+  if (mx !== mn) {
+    const d = mx - mn; s2 = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn);
+    h = mx === r ? (g - b) / d + (g < b ? 6 : 0) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; h *= 60;
+  }
+  return [h, s2, l];
+}
+function fromHsl(h, s2, l) {
+  const k = (n) => (n + h / 30) % 12, a = s2 * Math.min(l, 1 - l);
+  const f = (n) => Math.round(255 * (l - a * Math.max(-1, Math.min(k(n) - 3, 9 - k(n), 1))));
+  return "#" + [f(0), f(8), f(4)].map((v) => v.toString(16).padStart(2, "0")).join("").toUpperCase();
+}
+function mix(a, b, t) { const A = hex(a), B = hex(b); return "#" + A.map((v, i) => Math.round(v + (B[i] - v) * t).toString(16).padStart(2, "0")).join("").toUpperCase(); }
+function darker(c) { const [h, s2, l] = toHsl(c); return fromHsl(h, Math.min(1, s2 + 0.1), Math.max(0, l - 0.22)); }
+// 말풍선 채움 후보: 보색(배경 색상환 반대편의 밝은 색), 민트, 노랑, 흰색.
+// 글자: 아래-오른쪽 그림자는 채움색을 한 톤 누른 색(흰색이면 배경색을 섞은 색), 위-왼쪽 하이라이트는 흰색.
+// 말풍선 이중 선(과 하드 그림자) 색: 채움색과 같은 색상·채도, 명도만 낮게. 흰색은 배경색 계열로.
+function lineFor(fill, bg) {
+  const [h, s2] = toHsl(fill);
+  if (s2 < 0.08) { const [bh, bs] = toHsl(bg); return fromHsl(bh, bs, 0.24); }
+  return fromHsl(h, s2, 0.24);
+}
+function makeFills(bg, shift = 0) {
+  const [h] = toHsl(bg);
+  const comp = fromHsl((h + 180 + shift + 360) % 360, 0.75, 0.84);
+  const f = (label, fill, shadow) => ({ label, fill, shadow, light: "#FFFFFF", line: lineFor(fill, bg) });
+  return {
+    comp:   f("보색", comp, darker(comp)),
+    mint:   f("민트", "#BFF2E1", "#6FCDB0"),
+    yellow: f("노랑", "#FFEC8F", "#F2B54E"),
+    white:  f("흰색", "#FFFFFF", mix("#FFFFFF", bg, 0.45)),
+  };
+}
+let CHAR = CHARS[0];
+const FONT_DIR = location.pathname.includes("/docs/subtitle/") ? "../../fonts/" : "fonts/";
+// native = 실측한 픽셀 그리드 (fontTools로 외곽선 좌표 간격을 재서 확인)
+const FONTS = {
+  // sizes: 이 서체에서 고를 수 있는 배율. 정수배는 서체 원본 그대로, 2.5는 도트 복제(회색 없음, 도트 폭 2·3px 교차)
+  DOSPilgi:  { label: "도스필기", native: 16, file: "DOSPilgi.woff2", tracking: 1, sizes: [2, 2.5, 3] },   // 자간 +1도트
+  DOSGothic: { label: "도스고딕", native: 16, file: "DOSGothic.woff2", sizes: [2, 2.5, 3] },
+  neodgm:    { label: "둥근모",   native: 16, file: "neodgm.woff2", sizes: [2, 2.5, 3] },
+  HBIOS:     { label: "HBIOS",   native: 16, file: "HBIOS-SYS.woff2", sizes: [2, 2.5, 3] },
+  Fusion:    { label: "Fusion",  native: 12, file: "fusion-pixel-12px-proportional-ko.ttf.woff2", sizes: [3, 4] },
+};
+const FALLBACK = {
+  FusionJA: { native: 12, file: "fusion-pixel-12px-proportional-ja.ttf.woff2" },
+  FusionZH: { native: 12, file: "fusion-pixel-12px-proportional-zh_hans.ttf.woff2" },
+  FusionLatin: { native: 12, file: "fusion-pixel-12px-proportional-latin.ttf.woff2" },
+};
+const SAMPLES = {
+  ko: [
+    "안녕! 나는 민서야. 오늘 여기 온 사람이 고양이에 대해 얘기해보래. 고양이... 고양이는 사실 액체래! 그릇에 담으면 그릇 모양이 된다니까?",
+    "잠깐, 방금 '수박'이라고 했어? 수박! 수박은 줄무늬가 몇 개인지 세어본 사람 있어? 나는 세다가 까먹었어.",
+    "음... 그건 잘 모르겠는데. 근데 안경 쓴 사람은 비 오는 날 좀 억울하지 않아?",
+  ],
+  ja: "こんにちは！ぼくはミンソだよ。猫は液体なんだって。",
+  zh: "你好！我是敏瑞。听说猫是液体，真的吗？",
+  mix: "고양이는 일본어로 猫(ねこ), 중국어로 猫(māo), 프랑스어로 chat(샤)래. Ça va?",
+};
+
+// 확정: 꼬리 + 이중 테두리, 말할 때 얼굴 1/2, 보기 배율은 화면에 맞춤
+const opt = { d: 2.5, font: "DOSPilgi", ease: "step", face: 5, style: "tailDouble", fill: "mint", mode: "rollup", place: "below", zoom: "fit", auto: true };
+
+const fillOf = () => CHAR.fills[opt.fill];
+const PER_CHAR = ["font", "d", "fill", "place"];   // 캐릭터마다 따로 저장되는 값
+// 그릴 캐릭터로 전환: 캐릭터 값을 opt 에 싣고, 그 캐릭터의 캔버스·롤업 상태를 쓴다
+function use(c) {
+  CHAR = c;
+  for (const k of PER_CHAR) opt[k] = c[k];
+  ctx = c.ctx; scrollPx = c.scroll; roll = c.roll;
+}
+function stash(c) { c.scroll = scrollPx; c.roll = roll; }
+
+const loaded = {};
+async function loadFonts() {
+  const all = { ...FONTS, ...FALLBACK };
+  await Promise.all(Object.entries(all).map(async ([name, cfg]) => {
+    try {
+      const face = new FontFace(name, `url(${FONT_DIR}${cfg.file})`);
+      await face.load(); document.fonts.add(face); loaded[name] = true;
+    } catch (e) { loaded[name] = false; }
+  }));
+  glyphCache.clear(); metricsCache.clear(); glyphHas.clear(); renderPanel();
+}
+
+// =====================================================================
+// 글리프: 네이티브 크기로 그림 → 알파 0/1 이진화 → 정수 d배 확대
+// =====================================================================
+const glyphCache = new Map();
+const scratch = document.createElement("canvas").getContext("2d", { willReadFrequently: true });
+const KANA = /[぀-ヿㇰ-ㇿ]/;
+const HAN = /[㐀-䶿一-鿿豈-﫿]/;
+let textHasKana = false;
+
+function fontFor(ch) {
+  if (KANA.test(ch) || HAN.test(ch)) {
+    const fb = textHasKana ? "FusionJA" : "FusionZH";
+    if (loaded[fb]) return { family: fb, native: FALLBACK[fb].native };
+  }
+  const name = loaded[opt.font] ? opt.font : "monospace";
+  if (name !== "monospace" && !hasGlyph(name, ch) && loaded.FusionLatin) return { family: "FusionLatin", native: FALLBACK.FusionLatin.native };
+  return { family: name, native: FONTS[opt.font].native };
+}
+// 주 서체에 그 글자가 있는지: 뒤에 붙인 기본 서체가 달라도 폭이 같으면 주 서체가 그린 것
+const glyphHas = new Map();
+function hasGlyph(family, ch) {
+  if (ch === " ") return true;
+  const k = family + ch;
+  if (glyphHas.has(k)) return glyphHas.get(k);
+  scratch.font = `40px "${family}", monospace`; const a = scratch.measureText(ch).width;
+  scratch.font = `40px "${family}", serif`; const b = scratch.measureText(ch).width;
+  glyphHas.set(k, a === b);
+  return a === b;
+}
+const metricsCache = new Map();
+function metrics(family, native) {
+  const k = family + native;
+  if (metricsCache.has(k)) return metricsCache.get(k);
+  scratch.font = `${native}px "${family}"`;
+  const m = scratch.measureText("가Hg");
+  const asc = Math.round(m.fontBoundingBoxAscent ?? native * 0.85);
+  // HBIOS처럼 descent 가 음수로 적힌 서체가 있어서, 글자 칸은 최소 네이티브 높이를 보장한다
+  const v = { asc, desc: Math.max(Math.round(m.fontBoundingBoxDescent ?? native * 0.15), native - asc) };
+  metricsCache.set(k, v);
+  return v;
+}
+function baseMetrics() { const f = { family: loaded[opt.font] ? opt.font : "monospace", native: FONTS[opt.font].native }; return metrics(f.family, f.native); }
+function hex(s) { const n = parseInt(s.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; }
+
+function glyph(ch, color) {
+  const key = `${opt.font}|${textHasKana}|${ch}|${color}`;
+  let g = glyphCache.get(key);
+  if (g) return g;
+  const f = fontFor(ch), base = baseMetrics(), own = metrics(f.family, f.native);
+  scratch.font = `${f.native}px "${f.family}"`;
+  const w = Math.max(1, Math.round(scratch.measureText(ch).width));
+  const h = base.asc + base.desc;
+  const c = document.createElement("canvas"); c.width = w; c.height = h;
+  const x = c.getContext("2d", { willReadFrequently: true });
+  x.font = scratch.font; x.fillStyle = "#000";
+  // 다른 그리드의 폴백 글자는 세로 가운데를 맞춘다
+  const shift = 0;
+  x.fillText(ch, 0, base.asc - shift);
+  const img = x.getImageData(0, 0, w, h);
+  const [r, gg, b] = hex(color);
+  for (let i = 0; i < img.data.length; i += 4) {
+    img.data[i] = r; img.data[i + 1] = gg; img.data[i + 2] = b;
+    img.data[i + 3] = img.data[i + 3] >= 128 ? 255 : 0;
+  }
+  x.putImageData(img, 0, 0);
+  g = { c, w, h, family: f.family, native: f.native, base: base.asc - shift };
+  glyphCache.set(key, g);
+  return g;
+}
+// 레이아웃 폭은 "도트" 단위 (서체 네이티브 픽셀). 화면 픽셀 = 도트 × d
+const tracking = () => FONTS[opt.font].tracking || 0;
+// 글자마다 확대 배율. 주 서체는 d배. 그리드가 다른 폴백(Fusion 12px)은
+// 주 서체 글자 높이에 가장 가까운 "정수" 배율로 따로 키운다 (예: 도스필기 2.5× = 40px → Fusion 3× = 36px).
+const isFallbackGlyph = (gl) => gl.native !== FONTS[opt.font].native;
+const scaleOf = (gl, d) => isFallbackGlyph(gl) ? Math.max(1, Math.round((FONTS[opt.font].native * d) / gl.native)) : d;
+const charW = (ch) => {
+  const gl = glyph(ch, "#000000");
+  return (gl.w * scaleOf(gl, opt.d)) / opt.d + (isFallbackGlyph(gl) ? 0 : tracking());
+};
+
+// =====================================================================
+// 줄바꿈 (어절 단위, 긴 어절은 글자 단위)
+// =====================================================================
+function wrap(text, from, to, maxW) {
+  const lines = [];
+  let lineStart = from, lineW = 0, i = from;
+  while (i < to) {
+    let j = i;
+    while (j < to && text[j] !== " ") j++;
+    while (j < to && text[j] === " ") j++;
+    let wordW = 0, solid = 0;
+    for (let k = i; k < j; k++) { wordW += charW(text[k]); if (text[k] !== " ") solid = wordW; }
+    if (lineW > 0 && lineW + solid > maxW) { lines.push({ start: lineStart, end: i }); lineStart = i; lineW = 0; }
+    if (solid > maxW) {
+      for (let k = i; k < j; k++) {
+        const cw = charW(text[k]);
+        if (lineW > 0 && lineW + cw > maxW && text[k] !== " ") { lines.push({ start: lineStart, end: k }); lineStart = k; lineW = 0; }
+        lineW += cw;
+      }
+    } else lineW += wordW;
+    i = j;
+  }
+  lines.push({ start: lineStart, end: to });
+  return lines;
+}
+function sentenceRanges(text) {
+  const out = []; let s = 0; const re = /[.?!~…。！？]+["'”’)]*\s+/g; let m;
+  while ((m = re.exec(text))) { out.push([s, m.index + m[0].length]); s = m.index + m[0].length; }
+  out.push([s, text.length]);
+  return out;
+}
+
+// =====================================================================
+// 타이밍: 전사 조각을 "그때까지 예약된 오디오의 끝"에 묶는다
+// (실제 배포에서는 학생의 playChunk / playHead 를 감싸서 같은 값을 얻는다)
+// =====================================================================
+class SubtitleClock {
+  constructor() { this.reset(); }
+  reset() { this.text = ""; this.anchors = []; this.pending = []; this.playHead = 0; this.firstStart = null; this.done = false; }
+  onAudio(now, dur) {
+    const start = Math.max(this.playHead, now + 0.02);
+    if (this.firstStart === null) this.firstStart = start;
+    this.playHead = start + dur;
+    for (const a of this.pending) a.t = this.playHead;
+    this.pending = [];
+  }
+  onText(str) {
+    this.text += str;
+    const a = { end: this.text.length, t: this.playHead };
+    const prevT = this.anchors.length ? this.anchors[this.anchors.length - 1].t : (this.firstStart ?? 0);
+    if (this.firstStart === null || this.playHead <= prevT) this.pending.push(a);
+    this.anchors.push(a);
+  }
+  onTurnComplete() { for (const a of this.pending) a.t = Math.max(this.playHead, a.t); this.pending = []; this.done = true; }
+  revealed(now) {
+    if (this.firstStart === null) return 0;
+    let prevEnd = 0, prevT = this.firstStart, n = 0;
+    for (const a of this.anchors) {
+      if (this.pending.includes(a)) break;
+      const t1 = Math.max(a.t, prevT + 0.001);
+      if (now >= t1) n = a.end;
+      else { if (now > prevT) n = prevEnd + Math.floor((a.end - prevEnd) * (now - prevT) / (t1 - prevT)); break; }
+      prevEnd = a.end; prevT = t1;
+    }
+    return n;
+  }
+  speaking(now) { return this.firstStart !== null && now >= this.firstStart && now < this.playHead; }
+}
+
+// 모의 Gemini 스트림: 오디오는 실시간보다 3배 빨리 도착, 텍스트는 어절 조각
+let timers = [];
+function mockStream(text, onEvent) {
+  timers.forEach(clearTimeout); timers = [];
+  const pieces = text.match(/\S+\s*/g) || [];
+  let deliver = 650;
+  for (let i = 0; i < pieces.length; i += 1 + (i % 2)) {
+    const t = pieces.slice(i, i + 1 + (i % 2)).join("");
+    const dur = t.replace(/\s/g, "").length / 6.5 * (0.85 + Math.random() * 0.3) + (/[.?!。！？]\s*$/.test(t) ? 0.35 : 0);
+    timers.push(setTimeout(() => onEvent({ type: "audio", dur }), deliver));
+    timers.push(setTimeout(() => onEvent({ type: "text", text: t }), deliver + 30));
+    deliver += 60 + (dur * 1000) / 3;
+  }
+  timers.push(setTimeout(() => onEvent({ type: "turnComplete" }), deliver + 50));
+}
+
+// =====================================================================
+// 움직임
+// =====================================================================
+const EASE = {
+  smooth: (p) => 1 - Math.pow(1 - p, 3),
+  bouncy: (p) => { const c1 = 1.9, c3 = c1 + 1; return 1 + c3 * Math.pow(p - 1, 3) + c1 * Math.pow(p - 1, 2); },
+  step:   (p) => Math.ceil(p * 4 - 1e-6) / 4,
+};
+const DUR = { face: 0.36, bubbleOpen: 0.28, bubbleClose: 0.18 };
+
+// =====================================================================
+// 그리기
+// =====================================================================
+const cv = document.getElementById("stage");
+const mainCtx = cv.getContext("2d");
+mainCtx.imageSmoothingEnabled = false;
+let ctx = mainCtx;
+const faceCanvas = document.createElement("canvas");
+FACE.mount(faceCanvas);
+let selected = CHARS[0];
+const FACE_DIR = location.pathname.includes("/docs/subtitle/") ? "faces/" : "faces/";
+for (const c of CHARS) {
+  c.fills = makeFills(c.bg, c.compShift);
+  c.canvas = document.createElement("canvas"); c.canvas.width = SCREEN.w; c.canvas.height = SCREEN.h;
+  c.ctx = c.canvas.getContext("2d"); c.ctx.imageSmoothingEnabled = false;
+  c.scroll = 0; c.roll = { from: 0, to: 0, t0: 0 };
+  if (c.live) c.faceSrc = faceCanvas;
+  else { c.faceSrc = new Image(); c.faceSrc.src = FACE_DIR + c.id + ".png"; }
+}
+
+const now = () => performance.now() / 1000;
+const clock = new SubtitleClock();
+let roll = { from: 0, to: 0, t0: 0 };
+let phase = "idle", faceP = 0, bubbleP = 0, scrollPx = 0, holdUntil = 0, idleSince = now(), sampleIdx = 0, last = now();
+
+function geometry() {
+  const d = opt.d, u = Math.max(1, Math.floor(d));   // 말풍선 도트는 정수 픽셀
+  const base = baseMetrics();
+  const glyphH = base.asc + base.desc;
+  // 줄 간격 = 글자 높이 + 3도트(하이라이트 1 + 그림자 1 + 여백 1). Fusion처럼 서체 안에 행간이 들어 있으면 네이티브 높이로 잘라서 계산
+  const lineH = Math.round((Math.min(glyphH, FONTS[opt.font].native) + 3) * d);
+  const cell = opt.face, T = 6, above = opt.place === "above";
+  // 아래: 얼굴 위 · 말풍선 아래 / 위: 말풍선 위 · 얼굴 아래. 꼬리는 항상 얼굴 쪽.
+  const faceY = above ? SCREEN.h - 4 - 18 * cell : 4;
+  const top = above ? 4 + u : faceY + 18 * cell + T * u + 3;
+  const bottom = above ? faceY - T * u - 3 - 2 * u : SCREEN.h - 6 - 2 * u;
+  const x = 6, w = SCREEN.w - 12 - 2 * u;
+  const h = bottom - top;
+  const pad = opt.style === "tail" ? 3 * u : 5 * u;
+  const inner = h - 2 * pad;
+  const lines = Math.max(1, Math.floor((inner + 3 * d) / lineH));
+  const textTop = top + pad + Math.floor((inner - (lines * lineH - 3 * d)) / 2);
+  return { d, u, T, lineH, x, y: top, w, h, pad, lines, textTop, textW: Math.floor((w - 2 * pad) / d), faceY, above };
+}
+
+function stepRect(x, y, w, h, r, u) {
+  if (w <= 0 || h <= 0) return;
+  for (let i = 0; i <= r; i++) ctx.fillRect(x + (r - i) * u, y + i * u, w - 2 * (r - i) * u, h - 2 * i * u);
+}
+function shape(b, inflate, dx, dy, color, tail) {
+  const { x, y, w, h, u } = b;
+  const r = opt.style === "double" ? 3 : 4;   // 모서리 계단 수: 클수록 사선이 길다
+  ctx.fillStyle = color;
+  stepRect(x - inflate + dx, y - inflate + dy, w + 2 * inflate, h + 2 * inflate, Math.max(0, r + Math.round(inflate / u)), u);   // 안쪽 테두리는 반경도 같이 줄여 동심원처럼
+  if (!tail) return;
+  const cx = b.cx + dx;
+  for (let j = inflate < 0 ? 0 : 1; j <= b.T; j++) {
+    const hw = (b.T - j) * u + u + inflate;
+    const ry = b.above ? y + h - u + j * u : y - j * u;   // 위에 뜨면 꼬리가 아래(얼굴)로
+    if (hw > 0) ctx.fillRect(cx - hw, ry + dy, hw * 2, u);
+  }
+}
+// 같은 시간 안에서 n단계로 뚝뚝 끊는다 (도트 느낌)
+const STEPS = 4;
+const quant = (v) => opt.ease === "step" ? v : Math.round(v * STEPS) / STEPS;
+function drawBubble(g, p) {
+  if (p <= 0.02) return null;
+  const u = g.u, ease = EASE[opt.ease];
+  // 순서: 가로로 먼저 띠처럼 펼치고(앞 45%) → 세로로 연다(뒤 55%). 닫힐 땐 거꾸로.
+  const SPLIT = 0.45;
+  const ex = quant(ease(Math.min(1, p / SPLIT)));
+  const ey = p <= SPLIT ? 0 : quant(ease((p - SPLIT) / (1 - SPLIT)));
+  const snap = (v) => Math.max(2 * u, Math.round(v / u) * u);
+  const band = 8 * u;   // 가로로 펼쳐질 때의 띠 높이
+  const w = Math.min(SCREEN.w - 4 - 2 * u, snap(g.w * (0.08 + 0.92 * ex)));
+  const h = Math.min(g.h, snap(band + (g.h - band) * ey));
+  const cx = Math.round((g.x + g.w / 2) / u) * u;
+  // 꼬리 쪽(얼굴 쪽) 변을 고정하고 반대쪽으로 열린다
+  const b = { ...g, w, h, x: cx - Math.round(w / 2 / u) * u, cx, y: g.above ? g.y + g.h - h : g.y };
+  const tail = opt.style !== "double";
+  const fill = fillOf().fill;
+  shape(b, u, 0, 0, CHAR.halo, tail);              // 바깥 흰 헤일로
+  const line = fillOf().line;
+  shape(b, 0, 2 * u, 2 * u, line, tail);           // 하드 그림자
+  shape(b, 0, 0, 0, line, tail);                   // 바깥 테두리
+  shape(b, -u, 0, 0, fill, tail);                  // 채움 (꼬리 안쪽까지)
+  if (opt.style !== "tail") {                      // 안쪽 두 번째 테두리 (꼬리는 바깥 테두리에만 붙음)
+    shape(b, -2 * u, 0, 0, line, false);
+    shape(b, -3 * u, 0, 0, fill, false);
+  }
+  return b;
+}
+
+// 글자는 서체 네이티브 크기 비트맵(서체 원본과 픽셀 단위로 같음, 실측으로 반투명 0개 확인)을 최근접으로 키운다.
+// 하이라이트·그림자도 같은 비트맵을 "정확히 1도트(k px)" 밀어서 그리므로 글자와 같은 도트 격자에 딱 붙는다.
+// pass: 0 = 위-왼쪽 흰 하이라이트, 1 = 아래-오른쪽 그림자, 2 = 글자. 줄 전체를 pass 순서로 그려서 옆 글자를 덮지 않게.
+function drawChar(ch, x, y, g, pass) {
+  const color = pass === 0 ? fillOf().light : pass === 1 ? fillOf().shadow : CHAR.ink;
+  const gl = glyph(ch, color);
+  const k = scaleOf(gl, g.d);
+  const oy = y + gl.base * g.d - gl.base * k;   // 기준선 맞춤 (폴백 서체 배율이 달라도)
+  const off = pass === 0 ? -k : pass === 1 ? k : 0;
+  ctx.drawImage(gl.c, x + off, oy + off, gl.w * k, gl.h * k);
+  return charW(ch) * g.d;
+}
+
+function drawText(g, b, t) {
+  const text = clock.text;
+  const shown = clock.revealed(t);
+  let from = 0, to = text.length;
+  if (opt.mode === "sentence") [from, to] = sentenceRanges(text).find(([s, e]) => shown < e || e === text.length);
+  const lines = wrap(text, from, to, g.textW);
+  let cur = 0;
+  lines.forEach((l, i) => { if (shown > l.start) cur = i; });
+  const target = Math.max(0, cur - g.lines + 1) * g.lineH;
+  // 롤업: 한 줄을 약 0.12초 동안 3칸으로 탁탁 끊어 올린다 (속도는 이전과 같음)
+  if (target !== roll.to) roll = { from: scrollPx, to: target, t0: t };
+  if (target < scrollPx) scrollPx = target;
+  else {
+    const k = Math.min(1, (t - roll.t0) / 0.12);
+    const n = opt.ease === "step" ? 2 : 3;
+    scrollPx = Math.round(roll.from + (roll.to - roll.from) * Math.ceil(k * n - 1e-6) / n);
+  }
+  const left = b.x + g.pad;
+  ctx.save();
+  const inset = (opt.style === "tail" ? 1 : 3) * g.u;   // 안쪽 테두리 안에서만 글자가 보이게
+  // 글자 영역만 보이게: 롤업으로 올라간 윗줄 꼬리가 테두리 아래에 남지 않도록 글자 첫 줄 위에서 자른다
+  const sd = Math.max(1, Math.round(g.d));
+  const clipTop = Math.max(b.y + inset, g.textTop - Math.floor(g.d));
+  ctx.beginPath(); ctx.rect(b.x + inset, clipTop, b.w - 2 * inset, b.y + b.h - inset - clipTop); ctx.clip();
+  for (let pass = 0; pass < 3; pass++) {
+    lines.forEach((l, i) => {
+      let x = left;
+      const y = g.textTop + i * g.lineH - scrollPx;
+      if (y + g.lineH <= g.textTop || y > b.y + b.h) return;   // 다 올라간 줄은 그리지 않음 (꼬리 잔상 방지)
+      for (let k = l.start; k < Math.min(l.end, shown); k++) x = Math.round(x + drawChar(text[k], Math.round(x), y, g, pass));
+    });
+  }
+  ctx.restore();
+  if (clock.done && shown >= text.length && Math.floor(t * 2.5) % 2 === 0) {
+    const u = g.u, bx = b.x + b.w - g.pad - 4 * u, by = b.y + b.h - g.pad - u;
+    ctx.fillStyle = CHAR.ink;
+    for (let j = 0; j < 3; j++) ctx.fillRect(bx + j * u, by + j * u, (5 - 2 * j) * u, u);
+  }
+  return { shown, total: text.length };
+}
+
+let stat = null;
+function frame() {
+  const t = now(), dt = Math.min(0.05, t - last); last = t;
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  if (phase === "open" && clock.done && t > clock.playHead) {
+    if (!holdUntil) holdUntil = t + 1.4;
+    if (t > holdUntil) phase = "closing";
+  }
+  // 열림: 얼굴 먼저 → 말풍선. 닫힘: 말풍선 먼저 → 얼굴.
+  const talking = phase === "open";
+  const kf = reduce ? 1 : dt / DUR.face;
+  if (talking) {
+    faceP = Math.min(1, faceP + kf);
+    if (faceP >= 1) bubbleP = Math.min(1, bubbleP + (reduce ? 1 : dt / DUR.bubbleOpen));
+  } else {
+    if (bubbleP > 0) bubbleP = Math.max(0, bubbleP - (reduce ? 1 : dt / DUR.bubbleClose));
+    else faceP = Math.max(0, faceP - kf);
+    if (phase === "closing" && bubbleP === 0 && faceP === 0) { phase = "idle"; idleSince = t; }
+  }
+  if (opt.auto && phase === "idle" && t - idleSince > 1.6) nextSample();
+
+  const speaking = clock.speaking(t);
+  FACE.setState(phase === "thinking" ? "processing" : speaking ? "speaking" : "idle");
+  FACE.setLevel(speaking ? 0.02 + Math.random() * 0.09 : 0);
+
+  for (const c of CHARS) {
+    use(c);
+    const st = renderStage(t);
+    stash(c);
+    if (c === selected) stat = st;
+  }
+  mainCtx.drawImage(selected.canvas, 0, 0);
+  requestAnimationFrame(frame);
+}
+
+function renderStage(t) {
+  const ease = EASE[opt.ease];
+  const g = geometry();
+  ctx.fillStyle = CHAR.bg; ctx.fillRect(0, 0, SCREEN.w, SCREEN.h);
+  const fe = Math.min(1, Math.max(0, opt.ease === "bouncy" ? EASE.smooth(faceP) : ease(faceP)));
+  const cell = 10 - (10 - opt.face) * fe;
+  const fw = Math.round(32 * cell), fh = Math.round(18 * cell);
+  const fy = Math.round(((SCREEN.h - 180) / 2) * (1 - fe) + g.faceY * fe);
+  if (CHAR.live || CHAR.faceSrc.complete) ctx.drawImage(CHAR.faceSrc, Math.round((SCREEN.w - fw) / 2), fy, fw, fh);
+  const b = drawBubble(g, bubbleP);
+  let st = { g, shown: 0, total: clock.text.length };
+  if (b && bubbleP >= 1) st = { g, ...drawText(g, b, t) };
+  return st;
+}
+
+// =====================================================================
+// 말하기 / 끼어들기 / 자동 반복
+// =====================================================================
+function say(text) {
+  timers.forEach(clearTimeout); timers = [];
+  textHasKana = KANA.test(text);
+  clock.reset(); holdUntil = 0;
+  for (const c of CHARS) { c.scroll = 0; c.roll = { from: 0, to: 0, t0: 0 }; }
+  phase = "thinking";
+  mockStream(text, (e) => {
+    const t = now();
+    if (e.type === "audio") { clock.onAudio(t, e.dur); if (phase === "thinking") phase = "open"; }
+    if (e.type === "text") clock.onText(e.text);
+    if (e.type === "turnComplete") clock.onTurnComplete();
+  });
+}
+function interrupt() { timers.forEach(clearTimeout); timers = []; clock.reset(); phase = "closing"; holdUntil = 0; }
+function nextSample() {
+  const s = SAMPLES.ko[sampleIdx++ % SAMPLES.ko.length];
+  document.getElementById("text").value = s;
+  say(s);
+}
+
+// =====================================================================
+// 패널
+// =====================================================================
+const CHOICES = {
+  d: () => FONTS[selected.font].sizes.map((v) => [v, `${v}× · ${FONTS[selected.font].native * v}px${Number.isInteger(v) ? "" : " 도트 복제"}`]),
+  font: () => Object.entries(FONTS).map(([k, f]) => [k, `${f.label} ${f.native}`]),
+  ease: () => [["step", "계단"], ["smooth", "스르륵"], ["bouncy", "통통"]],
+  place: () => [["below", "얼굴 아래"], ["above", "얼굴 위"]],
+  fill: () => Object.entries(selected.fills).map(([k, f]) => [k, f.label]),
+  who: () => CHARS.map((c) => [c.id, c.name]),
+  mode: () => [["rollup", "롤업"], ["sentence", "문장마다 비우기"]],
+};
+function valueOf(k) { return k === "who" ? selected.id : PER_CHAR.includes(k) ? selected[k] : opt[k]; }
+function setValue(k, v, c = selected) {
+  if (k === "who") { selected = CHARS.find((x) => x.id === v); }
+  else if (PER_CHAR.includes(k)) {
+    c[k] = v;
+    if (k === "font" && !FONTS[v].sizes.includes(c.d)) c.d = FONTS[v].sizes.reduce((a, x) => Math.abs(x * FONTS[v].native - 40) < Math.abs(a * FONTS[v].native - 40) ? x : a);
+    c.scroll = 0; c.roll = { from: 0, to: 0, t0: 0 };
+  } else opt[k] = v;
+  applyZoom(); renderPanel(); renderGrid();
+}
+function renderPanel() {
+  for (const [k, list] of Object.entries(CHOICES)) {
+    const el = document.querySelector(`[data-g="${k}"]`);
+    el.replaceChildren(...list().map(([v, label]) => {
+      const b = document.createElement("button");
+      b.textContent = label;
+      if (k === "font" && loaded[v] === false) { b.disabled = true; b.title = "서체 파일을 못 읽었어요"; }
+      if (valueOf(k) === v) b.className = "on";
+      b.onclick = () => setValue(k, v);
+      return b;
+    }));
+  }
+  document.getElementById("auto").className = opt.auto ? "on" : "";
+}
+// 화면 1픽셀 = 기기 픽셀 정수 개. 브라우저 확대/축소(devicePixelRatio)까지 반영해서
+// CSS 크기를 정하니까 어떤 배율로 봐도 도트가 회색으로 뭉개지지 않는다.
+function applyZoom() {
+  const dpr = window.devicePixelRatio || 1;
+  let z;
+  if (opt.zoom === "fit") {
+    const availCss = cv.parentElement.parentElement.clientWidth - 28;
+    z = Math.max(1, Math.floor((availCss * dpr) / SCREEN.w));
+  } else {
+    z = Math.max(1, Math.round(opt.zoom * dpr));
+  }
+  cv.style.width = (SCREEN.w * z) / dpr + "px";
+  cv.style.height = (SCREEN.h * z) / dpr + "px";
+}
+(function watchDpr() {
+  try {
+    matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`).addEventListener("change", () => { applyZoom(); renderGrid(); watchDpr(); }, { once: true });
+  } catch (e) { /* 구형 브라우저: resize 로만 */ }
+})();
+function renderGrid() {
+  const grid = document.getElementById("grid");
+  if (!grid.childElementCount) {
+    for (const c of CHARS) {
+      const card = document.createElement("div"); card.className = "card"; c.card = card;
+      const h = document.createElement("h3"); h.innerHTML = `${c.name} <small></small>`;
+      c.canvas.onclick = () => setValue("who", c.id);
+      const fills = document.createElement("div"); fills.className = "row";
+      const places = document.createElement("div"); places.className = "row";
+      card.append(h, c.canvas, fills, places);
+      grid.append(card);
+      c.ui = { h, fills, places };
+    }
+  }
+  const dpr = window.devicePixelRatio || 1, z = Math.max(1, Math.floor((330 * dpr) / SCREEN.w));
+  for (const c of CHARS) {
+    c.card.classList.toggle("sel", c === selected);
+    c.ui.h.querySelector("small").textContent = `${FONTS[c.font].label} ${c.d}× · ${c.id}`;
+    c.canvas.style.width = (SCREEN.w * z) / dpr + "px"; c.canvas.style.height = (SCREEN.h * z) / dpr + "px";
+    c.ui.fills.replaceChildren(...Object.entries(c.fills).map(([k, f]) => {
+      const b = document.createElement("button");
+      b.className = "sw" + (c.fill === k ? " on" : ""); b.style.background = f.fill; b.title = f.label; b.setAttribute("aria-label", `${c.name} 말풍선 ${f.label}`);
+      b.onclick = () => setValue("fill", k, c);
+      return b;
+    }));
+    c.ui.places.replaceChildren(...[["below", "얼굴 아래"], ["above", "얼굴 위"]].map(([v, label]) => {
+      const b = document.createElement("button"); b.textContent = label; if (c.place === v) b.className = "on";
+      b.onclick = () => setValue("place", v, c);
+      return b;
+    }));
+  }
+}
+function exportText() {
+  return CHARS.map((c) => `${c.name}(${c.id}): 색 ${c.fills[c.fill].label} ${c.fills[c.fill].fill} · ${c.place === "below" ? "얼굴 아래" : "얼굴 위"} · ${FONTS[c.font].label} ${c.d}×`).join("\n");
+}
+document.getElementById("copy").onclick = async () => {
+  const pre = document.getElementById("export");
+  pre.textContent = exportText(); pre.hidden = false;
+  try { await navigator.clipboard.writeText(pre.textContent); document.getElementById("copy").textContent = "복사됨"; }
+  catch (e) { const r = document.createRange(); r.selectNodeContents(pre); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); document.getElementById("copy").textContent = "선택됨 · Cmd+C"; }
+  setTimeout(() => (document.getElementById("copy").textContent = "설정 복사"), 1800);
+};
+function renderInfo() {
+  if (!stat) return;
+  use(selected); const g = stat.g, adv = charW("가");
+  document.getElementById("info").textContent =
+    `한 줄에 한글 약 ${Math.floor(g.textW / adv)}자 · ${g.lines}줄 · 글자 높이 ${(baseMetrics().asc + baseMetrics().desc) * g.d}px\n` +
+    `표시 ${stat.shown} / 받은 글자 ${stat.total}` + (Object.values(loaded).includes(false) ? "\n일부 서체 파일을 못 읽었어요" : "");
+}
+document.getElementById("say").onclick = () => { opt.auto = false; renderPanel(); say(document.getElementById("text").value); };
+document.getElementById("cut").onclick = () => { opt.auto = false; renderPanel(); interrupt(); };
+document.getElementById("auto").onclick = () => { opt.auto = !opt.auto; idleSince = now(); renderPanel(); };
+document.querySelectorAll("[data-sample]").forEach((b) => (b.onclick = () => {
+  opt.auto = false; renderPanel();
+  document.getElementById("text").value = SAMPLES[b.dataset.sample]; say(SAMPLES[b.dataset.sample]);
+}));
+addEventListener("resize", () => { applyZoom(); renderGrid(); });
+setInterval(renderInfo, 250);
+applyZoom(); renderPanel(); renderGrid();
+loadFonts().then(() => { idleSince = now() - 1; });
+requestAnimationFrame(frame);
+window.__sub = { say, interrupt, opt, clock, renderPanel, CHARS, setValue };
+</script>
