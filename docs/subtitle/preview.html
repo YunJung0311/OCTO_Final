@@ -37,12 +37,25 @@
   textarea { width: 100%; box-sizing: border-box; min-height: 76px; background: #1a191e; color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 9px; font: 13px/1.5 var(--font-ui); resize: vertical; }
   #info { font: 12px/1.6 var(--font-ui); color: var(--dim); white-space: pre-line; font-variant-numeric: tabular-nums; }
   hr { border: 0; border-top: 1px solid var(--line); margin: 2px 0; }
+  .all { max-width: 1240px; margin: 36px auto 0; display: grid; gap: 12px; }
+  .all-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  h2 { font: 400 20px/1.2 var(--font-pixel); margin: 0; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 16px; }
+  .card { background: var(--panel); border-radius: 12px; padding: 12px; display: grid; gap: 10px; min-width: 0; border: 1px solid transparent; }
+  .card.sel { border-color: var(--text); }
+  .card h3 { margin: 0; font: 400 16px var(--font-pixel); display: flex; gap: 8px; align-items: baseline; }
+  .card h3 small { font: 12px var(--font-ui); color: var(--dim); }
+  .card canvas { image-rendering: pixelated; image-rendering: crisp-edges; display: block; cursor: pointer; max-width: 100%; }
+  .row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .sw { width: 30px; height: 26px; padding: 0; border-radius: 6px; border: 2px solid var(--line); }
+  .sw.on { border-color: var(--text); box-shadow: 0 0 0 2px var(--bench) inset; }
+  #export { background: #1a191e; border: 1px solid var(--line); border-radius: 8px; padding: 12px; overflow-x: auto; font: 12px/1.5 ui-monospace, monospace; color: var(--text); }
 </style>
 
 <div class="wrap">
   <section class="screen">
     <header>
-      <h1>민서 픽셀 자막</h1>
+      <h1>OCTO 픽셀 자막</h1>
       <span class="spec">320×240 · 2인치 실물 비율</span>
     </header>
     <div class="bezel"><canvas id="stage" width="320" height="240"></canvas></div>
@@ -50,6 +63,7 @@
   </section>
 
   <aside class="panel">
+    <div class="group"><span>캐릭터</span><div class="opts" data-g="who"></div></div>
     <div class="group"><span>글자 크기</span><div class="opts" data-g="d"></div></div>
     <div class="group"><span>서체</span><div class="opts" data-g="font"></div></div>
     <div class="group"><span>열림 / 닫힘 움직임</span><div class="opts" data-g="ease"></div></div>
@@ -73,6 +87,16 @@
   </aside>
 </div>
 
+<section class="all">
+  <header class="all-head">
+    <h2>전체 캐릭터</h2>
+    <button id="copy">설정 복사</button>
+  </header>
+  <p class="caption">카드마다 말풍선 색과 위치를 고르면 바로 반영돼요. 카드의 화면을 누르면 위 큰 화면에서 자세히 볼 수 있어요. 다 고르셨으면 "설정 복사"를 눌러 채팅에 붙여 주세요.</p>
+  <div id="grid" class="grid"></div>
+  <pre id="export" hidden></pre>
+</section>
+
 <script src="minseo-face.js"></script>
 <script>
 "use strict";
@@ -80,15 +104,55 @@
 // 화면 · 캐릭터 · 서체
 // =====================================================================
 const SCREEN = { w: 320, h: 240 };
-// place: 말풍선이 얼굴 아래(below)에 뜰지 위(above)에 뜰지. 캐릭터마다 지정.
-const CHAR = { bg: "#F9503C", ink: "#121212", halo: "#FFFFFF", place: "below" };
-// 말풍선 채움색. 민트는 토마토 배경의 보색 쪽.
-// 글자: 아래-오른쪽 그림자는 채움색을 한 톤 누른 색, 위-왼쪽 하이라이트는 흰색.
-const FILLS = {
-  mint:   { label: "민트",  fill: "#BFF2E1", shadow: "#6FCDB0", light: "#FFFFFF" },
-  yellow: { label: "노랑",  fill: "#FFEC8F", shadow: "#F2B54E", light: "#FFFFFF" },
-  white:  { label: "흰색",  fill: "#FFFFFF", shadow: "#F2A3C4", light: "#FFFFFF" },
-};
+// 캐릭터별 설정. place: 말풍선이 얼굴 아래(below)/위(above). face: 민서만 실시간 얼굴, 나머지는 원본 페이지 대기 화면 캡처.
+const CHARS = [
+  { id: "minseo",       name: "민서",       bg: "#F9503C", ink: "#121212", font: "DOSPilgi",  d: 2.5, fill: "mint", place: "below", live: true },
+  { id: "hyosun",       name: "일단",       bg: "#2FD4C6", ink: "#1C2A63", font: "DOSGothic", d: 2.5, fill: "comp", place: "below" },
+  { id: "gaeun",        name: "새근이",     bg: "#E9EEFB", ink: "#16265C", font: "DOSGothic", d: 2.5, fill: "comp", place: "below" },
+  { id: "eunseol",      name: "삐",         bg: "#D4FF00", ink: "#12205C", font: "neodgm",    d: 2.5, fill: "comp", place: "below" },
+  { id: "soyeon",       name: "오히려좋아", bg: "#FEE14B", ink: "#12205C", font: "neodgm",    d: 2.5, fill: "comp", place: "below" },
+  { id: "minjeong",     name: "헐",         bg: "#FF4AA0", ink: "#13203C", font: "DOSPilgi",  d: 2.5, fill: "comp", place: "below" },
+  { id: "seoyoungchae", name: "도리",       bg: "#7590E8", ink: "#111F5E", font: "neodgm",    d: 2.5, fill: "comp", place: "below" },
+  { id: "yunjung",      name: "BEAT",       bg: "#040B24", ink: "#040B24", font: "HBIOS",     d: 2.5, fill: "comp", place: "below" },
+];
+// ---- 색 계산 ----
+function toHsl(hex6) {
+  let [r, g, b] = hex(hex6).map((v) => v / 255);
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2;
+  let h = 0, s2 = 0;
+  if (mx !== mn) {
+    const d = mx - mn; s2 = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn);
+    h = mx === r ? (g - b) / d + (g < b ? 6 : 0) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; h *= 60;
+  }
+  return [h, s2, l];
+}
+function fromHsl(h, s2, l) {
+  const k = (n) => (n + h / 30) % 12, a = s2 * Math.min(l, 1 - l);
+  const f = (n) => Math.round(255 * (l - a * Math.max(-1, Math.min(k(n) - 3, 9 - k(n), 1))));
+  return "#" + [f(0), f(8), f(4)].map((v) => v.toString(16).padStart(2, "0")).join("").toUpperCase();
+}
+function mix(a, b, t) { const A = hex(a), B = hex(b); return "#" + A.map((v, i) => Math.round(v + (B[i] - v) * t).toString(16).padStart(2, "0")).join("").toUpperCase(); }
+function darker(c) { const [h, s2, l] = toHsl(c); return fromHsl(h, Math.min(1, s2 + 0.1), Math.max(0, l - 0.22)); }
+// 말풍선 채움 후보: 보색(배경 색상환 반대편의 밝은 색), 민트, 노랑, 흰색.
+// 글자: 아래-오른쪽 그림자는 채움색을 한 톤 누른 색(흰색이면 배경색을 섞은 색), 위-왼쪽 하이라이트는 흰색.
+// 말풍선 이중 선(과 하드 그림자) 색: 채움색과 같은 색상·채도, 명도만 낮게. 흰색은 배경색 계열로.
+function lineFor(fill, bg) {
+  const [h, s2] = toHsl(fill);
+  if (s2 < 0.08) { const [bh, bs] = toHsl(bg); return fromHsl(bh, bs, 0.24); }
+  return fromHsl(h, s2, 0.24);
+}
+function makeFills(bg) {
+  const [h] = toHsl(bg);
+  const comp = fromHsl((h + 180) % 360, 0.75, 0.84);
+  const f = (label, fill, shadow) => ({ label, fill, shadow, light: "#FFFFFF", line: lineFor(fill, bg) });
+  return {
+    comp:   f("보색", comp, darker(comp)),
+    mint:   f("민트", "#BFF2E1", "#6FCDB0"),
+    yellow: f("노랑", "#FFEC8F", "#F2B54E"),
+    white:  f("흰색", "#FFFFFF", mix("#FFFFFF", bg, 0.45)),
+  };
+}
+let CHAR = CHARS[0];
 const FONT_DIR = location.pathname.includes("/docs/subtitle/") ? "../../fonts/" : "fonts/";
 // native = 실측한 픽셀 그리드 (fontTools로 외곽선 좌표 간격을 재서 확인)
 const FONTS = {
@@ -116,10 +180,18 @@ const SAMPLES = {
 };
 
 // 확정: 꼬리 + 이중 테두리, 말할 때 얼굴 1/2, 보기 배율은 화면에 맞춤
-const opt = { d: 2.5, font: "DOSPilgi", ease: "step", face: 5, style: "tailDouble", fill: "mint", mode: "rollup", place: CHAR.place, zoom: "fit", auto: true };
+const opt = { d: 2.5, font: "DOSPilgi", ease: "step", face: 5, style: "tailDouble", fill: "mint", mode: "rollup", place: "below", zoom: "fit", auto: true };
 // 정수배면 서체 원본 그대로, 아니면 네이티브 크기 비트맵을 최근접 복제 (수학적으로 회색이 생길 수 없음)
 Object.defineProperty(opt, "render", { get: () => (Number.isInteger(opt.d) ? "browser" : "binary") });
-const fillOf = () => FILLS[opt.fill];
+const fillOf = () => CHAR.fills[opt.fill];
+const PER_CHAR = ["font", "d", "fill", "place"];   // 캐릭터마다 따로 저장되는 값
+// 그릴 캐릭터로 전환: 캐릭터 값을 opt 에 싣고, 그 캐릭터의 캔버스·롤업 상태를 쓴다
+function use(c) {
+  CHAR = c;
+  for (const k of PER_CHAR) opt[k] = c[k];
+  ctx = c.ctx; scrollPx = c.scroll; roll = c.roll;
+}
+function stash(c) { c.scroll = scrollPx; c.roll = roll; }
 
 const loaded = {};
 async function loadFonts() {
@@ -168,7 +240,9 @@ function metrics(family, native) {
   if (metricsCache.has(k)) return metricsCache.get(k);
   scratch.font = `${native}px "${family}"`;
   const m = scratch.measureText("가Hg");
-  const v = { asc: Math.round(m.fontBoundingBoxAscent ?? native * 0.85), desc: Math.round(m.fontBoundingBoxDescent ?? native * 0.15) };
+  const asc = Math.round(m.fontBoundingBoxAscent ?? native * 0.85);
+  // HBIOS처럼 descent 가 음수로 적힌 서체가 있어서, 글자 칸은 최소 네이티브 높이를 보장한다
+  const v = { asc, desc: Math.max(Math.round(m.fontBoundingBoxDescent ?? native * 0.15), native - asc) };
   metricsCache.set(k, v);
   return v;
 }
@@ -310,10 +384,21 @@ const DUR = { face: 0.36, bubbleOpen: 0.28, bubbleClose: 0.18 };
 // 그리기
 // =====================================================================
 const cv = document.getElementById("stage");
-const ctx = cv.getContext("2d");
-ctx.imageSmoothingEnabled = false;
+const mainCtx = cv.getContext("2d");
+mainCtx.imageSmoothingEnabled = false;
+let ctx = mainCtx;
 const faceCanvas = document.createElement("canvas");
 FACE.mount(faceCanvas);
+let selected = CHARS[0];
+const FACE_DIR = location.pathname.includes("/docs/subtitle/") ? "faces/" : "faces/";
+for (const c of CHARS) {
+  c.fills = makeFills(c.bg);
+  c.canvas = document.createElement("canvas"); c.canvas.width = SCREEN.w; c.canvas.height = SCREEN.h;
+  c.ctx = c.canvas.getContext("2d"); c.ctx.imageSmoothingEnabled = false;
+  c.scroll = 0; c.roll = { from: 0, to: 0, t0: 0 };
+  if (c.live) c.faceSrc = faceCanvas;
+  else { c.faceSrc = new Image(); c.faceSrc.src = FACE_DIR + c.id + ".png"; }
+}
 
 const now = () => performance.now() / 1000;
 const clock = new SubtitleClock();
@@ -376,11 +461,12 @@ function drawBubble(g, p) {
   const tail = opt.style !== "double";
   const fill = fillOf().fill;
   shape(b, u, 0, 0, CHAR.halo, tail);              // 바깥 흰 헤일로
-  shape(b, 0, 2 * u, 2 * u, CHAR.ink, tail);       // 하드 그림자
-  shape(b, 0, 0, 0, CHAR.ink, tail);               // 바깥 테두리
+  const line = fillOf().line;
+  shape(b, 0, 2 * u, 2 * u, line, tail);           // 하드 그림자
+  shape(b, 0, 0, 0, line, tail);                   // 바깥 테두리
   shape(b, -u, 0, 0, fill, tail);                  // 채움 (꼬리 안쪽까지)
   if (opt.style !== "tail") {                      // 안쪽 두 번째 테두리 (꼬리는 바깥 테두리에만 붙음)
-    shape(b, -2 * u, 0, 0, CHAR.ink, false);
+    shape(b, -2 * u, 0, 0, line, false);
     shape(b, -3 * u, 0, 0, fill, false);
   }
   return b;
@@ -474,6 +560,17 @@ function frame() {
   FACE.setState(phase === "thinking" ? "processing" : speaking ? "speaking" : "idle");
   FACE.setLevel(speaking ? 0.02 + Math.random() * 0.09 : 0);
 
+  for (const c of CHARS) {
+    use(c);
+    const st = renderStage(t);
+    stash(c);
+    if (c === selected) stat = st;
+  }
+  mainCtx.drawImage(selected.canvas, 0, 0);
+  requestAnimationFrame(frame);
+}
+
+function renderStage(t) {
   const ease = EASE[opt.ease];
   const g = geometry();
   ctx.fillStyle = CHAR.bg; ctx.fillRect(0, 0, SCREEN.w, SCREEN.h);
@@ -481,12 +578,11 @@ function frame() {
   const cell = 10 - (10 - opt.face) * fe;
   const fw = Math.round(32 * cell), fh = Math.round(18 * cell);
   const fy = Math.round(((SCREEN.h - 180) / 2) * (1 - fe) + g.faceY * fe);
-  ctx.drawImage(faceCanvas, Math.round((SCREEN.w - fw) / 2), fy, fw, fh);
-
+  if (CHAR.live || CHAR.faceSrc.complete) ctx.drawImage(CHAR.faceSrc, Math.round((SCREEN.w - fw) / 2), fy, fw, fh);
   const b = drawBubble(g, bubbleP);
-  stat = { g, shown: 0, total: clock.text.length };
-  if (b && bubbleP >= 1) stat = { g, ...drawText(g, b, t) };
-  requestAnimationFrame(frame);
+  let st = { g, shown: 0, total: clock.text.length };
+  if (b && bubbleP >= 1) st = { g, ...drawText(g, b, t) };
+  return st;
 }
 
 // =====================================================================
@@ -495,7 +591,8 @@ function frame() {
 function say(text) {
   timers.forEach(clearTimeout); timers = [];
   textHasKana = KANA.test(text);
-  clock.reset(); scrollPx = 0; holdUntil = 0; roll = { from: 0, to: 0, t0: 0 };
+  clock.reset(); holdUntil = 0;
+  for (const c of CHARS) { c.scroll = 0; c.roll = { from: 0, to: 0, t0: 0 }; }
   phase = "thinking";
   mockStream(text, (e) => {
     const t = now();
@@ -515,13 +612,24 @@ function nextSample() {
 // 패널
 // =====================================================================
 const CHOICES = {
-  d: () => FONTS[opt.font].sizes.map((v) => [v, `${v}× · ${FONTS[opt.font].native * v}px${Number.isInteger(v) ? "" : " 도트 복제"}`]),
+  d: () => FONTS[selected.font].sizes.map((v) => [v, `${v}× · ${FONTS[selected.font].native * v}px${Number.isInteger(v) ? "" : " 도트 복제"}`]),
   font: () => Object.entries(FONTS).map(([k, f]) => [k, `${f.label} ${f.native}`]),
   ease: () => [["step", "계단"], ["smooth", "스르륵"], ["bouncy", "통통"]],
   place: () => [["below", "얼굴 아래"], ["above", "얼굴 위"]],
-  fill: () => Object.entries(FILLS).map(([k, f]) => [k, f.label]),
+  fill: () => Object.entries(selected.fills).map(([k, f]) => [k, f.label]),
+  who: () => CHARS.map((c) => [c.id, c.name]),
   mode: () => [["rollup", "롤업"], ["sentence", "문장마다 비우기"]],
 };
+function valueOf(k) { return k === "who" ? selected.id : PER_CHAR.includes(k) ? selected[k] : opt[k]; }
+function setValue(k, v, c = selected) {
+  if (k === "who") { selected = CHARS.find((x) => x.id === v); }
+  else if (PER_CHAR.includes(k)) {
+    c[k] = v;
+    if (k === "font" && !FONTS[v].sizes.includes(c.d)) c.d = FONTS[v].sizes.reduce((a, x) => Math.abs(x * FONTS[v].native - 40) < Math.abs(a * FONTS[v].native - 40) ? x : a);
+    c.scroll = 0; c.roll = { from: 0, to: 0, t0: 0 };
+  } else opt[k] = v;
+  applyZoom(); renderPanel(); renderGrid();
+}
 function renderPanel() {
   for (const [k, list] of Object.entries(CHOICES)) {
     const el = document.querySelector(`[data-g="${k}"]`);
@@ -529,9 +637,8 @@ function renderPanel() {
       const b = document.createElement("button");
       b.textContent = label;
       if (k === "font" && loaded[v] === false) { b.disabled = true; b.title = "서체 파일을 못 읽었어요"; }
-      if (opt[k] === v) b.className = "on";
-      b.onclick = () => { opt[k] = v;
-        if (k === "font" && !FONTS[v].sizes.includes(opt.d)) opt.d = FONTS[v].sizes.reduce((a, c) => Math.abs(c * FONTS[v].native - 40) < Math.abs(a * FONTS[v].native - 40) ? c : a); glyphCache.clear(); metricsCache.clear(); glyphHas.clear(); scrollPx = 0; applyZoom(); renderPanel(); };
+      if (valueOf(k) === v) b.className = "on";
+      b.onclick = () => setValue(k, v);
       return b;
     }));
   }
@@ -553,12 +660,54 @@ function applyZoom() {
 }
 (function watchDpr() {
   try {
-    matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`).addEventListener("change", () => { applyZoom(); watchDpr(); }, { once: true });
+    matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`).addEventListener("change", () => { applyZoom(); renderGrid(); watchDpr(); }, { once: true });
   } catch (e) { /* 구형 브라우저: resize 로만 */ }
 })();
+function renderGrid() {
+  const grid = document.getElementById("grid");
+  if (!grid.childElementCount) {
+    for (const c of CHARS) {
+      const card = document.createElement("div"); card.className = "card"; c.card = card;
+      const h = document.createElement("h3"); h.innerHTML = `${c.name} <small></small>`;
+      c.canvas.onclick = () => setValue("who", c.id);
+      const fills = document.createElement("div"); fills.className = "row";
+      const places = document.createElement("div"); places.className = "row";
+      card.append(h, c.canvas, fills, places);
+      grid.append(card);
+      c.ui = { h, fills, places };
+    }
+  }
+  const dpr = window.devicePixelRatio || 1, z = Math.max(1, Math.floor((330 * dpr) / SCREEN.w));
+  for (const c of CHARS) {
+    c.card.classList.toggle("sel", c === selected);
+    c.ui.h.querySelector("small").textContent = `${FONTS[c.font].label} ${c.d}× · ${c.id}`;
+    c.canvas.style.width = (SCREEN.w * z) / dpr + "px"; c.canvas.style.height = (SCREEN.h * z) / dpr + "px";
+    c.ui.fills.replaceChildren(...Object.entries(c.fills).map(([k, f]) => {
+      const b = document.createElement("button");
+      b.className = "sw" + (c.fill === k ? " on" : ""); b.style.background = f.fill; b.title = f.label; b.setAttribute("aria-label", `${c.name} 말풍선 ${f.label}`);
+      b.onclick = () => setValue("fill", k, c);
+      return b;
+    }));
+    c.ui.places.replaceChildren(...[["below", "얼굴 아래"], ["above", "얼굴 위"]].map(([v, label]) => {
+      const b = document.createElement("button"); b.textContent = label; if (c.place === v) b.className = "on";
+      b.onclick = () => setValue("place", v, c);
+      return b;
+    }));
+  }
+}
+function exportText() {
+  return CHARS.map((c) => `${c.name}(${c.id}): 색 ${c.fills[c.fill].label} ${c.fills[c.fill].fill} · ${c.place === "below" ? "얼굴 아래" : "얼굴 위"} · ${FONTS[c.font].label} ${c.d}×`).join("\n");
+}
+document.getElementById("copy").onclick = async () => {
+  const pre = document.getElementById("export");
+  pre.textContent = exportText(); pre.hidden = false;
+  try { await navigator.clipboard.writeText(pre.textContent); document.getElementById("copy").textContent = "복사됨"; }
+  catch (e) { const r = document.createRange(); r.selectNodeContents(pre); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); document.getElementById("copy").textContent = "선택됨 · Cmd+C"; }
+  setTimeout(() => (document.getElementById("copy").textContent = "설정 복사"), 1800);
+};
 function renderInfo() {
   if (!stat) return;
-  const g = stat.g, adv = charW("가");
+  use(selected); const g = stat.g, adv = charW("가");
   document.getElementById("info").textContent =
     `한 줄에 한글 약 ${Math.floor(g.textW / adv)}자 · ${g.lines}줄 · 글자 높이 ${(baseMetrics().asc + baseMetrics().desc) * g.d}px\n` +
     `표시 ${stat.shown} / 받은 글자 ${stat.total}` + (Object.values(loaded).includes(false) ? "\n일부 서체 파일을 못 읽었어요" : "");
@@ -570,10 +719,10 @@ document.querySelectorAll("[data-sample]").forEach((b) => (b.onclick = () => {
   opt.auto = false; renderPanel();
   document.getElementById("text").value = SAMPLES[b.dataset.sample]; say(SAMPLES[b.dataset.sample]);
 }));
-addEventListener("resize", applyZoom);
+addEventListener("resize", () => { applyZoom(); renderGrid(); });
 setInterval(renderInfo, 250);
-applyZoom(); renderPanel();
+applyZoom(); renderPanel(); renderGrid();
 loadFonts().then(() => { idleSince = now() - 1; });
 requestAnimationFrame(frame);
-window.__sub = { say, interrupt, opt, clock, renderPanel };
+window.__sub = { say, interrupt, opt, clock, renderPanel, CHARS, setValue };
 </script>
