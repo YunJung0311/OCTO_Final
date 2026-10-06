@@ -51,12 +51,11 @@
       "name": "삐",
       "bg": "#D4FF00",
       "ink": "#12205C",
-      "font": "DOSPilgi",
+      "font": "neodgm",
       "fill": "#FFEC8F",
       "fillName": "노랑",
       "place": "below",
-      "scale": 2.5,
-      "tracking": 1
+      "scale": 2.5
     },
     "soyeon": {
       "name": "오히려좋아",
