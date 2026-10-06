@@ -71,11 +71,11 @@
       "name": "헐",
       "bg": "#FF4AA0",
       "ink": "#13203C",
-      "font": "neodgm",
+      "font": "Fusion",
       "fill": "#FFFFFF",
       "fillName": "흰색",
       "place": "above",
-      "scale": 2.5
+      "scale": 3
     },
     "seoyoungchae": {
       "name": "도리",
