@@ -116,6 +116,16 @@ padding          = 2d ~ 3d
 - `d`는 JS가 실제 화면 크기에서 계산해 CSS 변수 `--d`로 내려줌. 모든 치수는 `calc(var(--d) * n)`.
 - 얼굴 그래픽 축소 배율도 가능하면 정수비 또는 1/2, 1/3 같은 단순비로 스냅 (Canvas는 `image-rendering: pixelated`, SVG는 `shape-rendering: crispEdges`).
 
+### 확정: 320×240 가로 (10/06, 대시보드 확인)
+- 얼굴 32×18 격자 → 대기 때 한 칸 10px (320×180), 말할 때 한 칸 5px (160×90)로 정수 축소. 위로 붙음.
+- 아래 남는 공간에 말풍선. d=1(16px 글자)이면 한 줄 약 17~18자 × 4줄, d=2(32px)면 약 8자 × 2줄.
+- 미리보기: `docs/subtitle/preview.html` (로컬 서버로 열기: 레포 루트에서 `python3 -m http.server` → `/docs/subtitle/preview.html`)
+
+### 글자는 canvas에 그리고 이진화 (CSS 텍스트 대신)
+- 글리프를 서체 네이티브 크기(16 또는 12px)로 오프스크린 canvas에 그린 뒤, 알파 128 기준으로 0/1로 잘라 안티앨리어싱을 완전히 제거. 그다음 정수 d배로 nearest-neighbor 확대.
+- 리눅스 Chromium에서 CSS로는 글자 AA를 못 끄기 때문에 이게 Pi에서 가장 확실한 방법. 한글 16px과 Fusion 12px도 각자 네이티브로 그린 뒤 같은 d배로 키우니 `size-adjust` 없이 둘 다 선명.
+- 말풍선, 얼굴, 글자가 전부 한 장의 320×240 canvas에 그려져서 픽셀 격자가 정확히 공유됨.
+
 ### 해상도별 시뮬레이션 (16px 서체, 좌우 여백 포함)
 | 화면 | d=1 (16px 글자) | d=2 (32px 글자) |
 | --- | --- | --- |
