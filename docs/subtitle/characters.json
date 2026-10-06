@@ -1,15 +1,102 @@
 {
   "_note": "2026-10-06 민서 확정. 배포용 octo-subtitle.js 가 이 값을 읽는다. fill 은 말풍선 채움색, 이중 선·하드 그림자는 채움색의 색상·채도를 유지하고 명도 0.24로 낮춘 색(흰색은 배경색 계열). 글자 그림자는 채움색을 한 톤 누른 색, 하이라이트는 흰색.",
-  "screen": { "w": 320, "h": 240 },
-  "common": { "style": "tail+double", "faceScaleWhenTalking": 0.5, "lineBreak": "rollup", "motion": "step", "scale": 2.5, "fallback": { "ja": "Fusion 12 ja ×3", "zh": "Fusion 12 zh_hans ×3", "latin": "Fusion 12 latin ×3" } },
+  "screen": {
+    "w": 320,
+    "h": 240
+  },
+  "common": {
+    "style": "tail+double",
+    "faceScaleWhenTalking": 0.5,
+    "lineBreak": "rollup",
+    "motion": "step",
+    "fallback": {
+      "ja": "Fusion 12 ja ×3",
+      "zh": "Fusion 12 zh_hans ×3",
+      "latin": "Fusion 12 latin ×3"
+    }
+  },
   "characters": {
-    "minseo":       { "name": "민서",       "bg": "#F9503C", "ink": "#121212", "font": "DOSPilgi",  "tracking": 1, "fill": "#B8EEF5", "fillName": "보색", "place": "below" },
-    "hyosun":       { "name": "일단",       "bg": "#2FD4C6", "ink": "#1C2A63", "font": "DOSGothic", "fill": "#F5B8BD", "fillName": "보색", "place": "above" },
-    "gaeun":        { "name": "새근이",     "bg": "#E9EEFB", "ink": "#16265C", "font": "DOSGothic", "fill": "#BFF2E1", "fillName": "민트", "place": "below" },
-    "eunseol":      { "name": "삐",         "bg": "#D4FF00", "ink": "#12205C", "font": "neodgm",    "fill": "#FFEC8F", "fillName": "노랑", "place": "below" },
-    "soyeon":       { "name": "오히려좋아", "bg": "#FEE14B", "ink": "#12205C", "font": "neodgm",    "fill": "#BFF2E1", "fillName": "민트", "place": "above" },
-    "minjeong":     { "name": "헐",         "bg": "#FF4AA0", "ink": "#13203C", "font": "DOSPilgi",  "tracking": 1, "fill": "#FFFFFF", "fillName": "흰색", "place": "above" },
-    "seoyoungchae": { "name": "도리",       "bg": "#7590E8", "ink": "#111F5E", "font": "neodgm",    "fill": "#FFFFFF", "fillName": "흰색", "place": "below" },
-    "yunjung":      { "name": "BEAT",       "bg": "#040B24", "ink": "#040B24", "font": "HBIOS",     "fill": "#FFEC8F", "fillName": "노랑", "place": "above" }
+    "minseo": {
+      "name": "민서",
+      "bg": "#F9503C",
+      "ink": "#121212",
+      "font": "DOSPilgi",
+      "fill": "#B8EEF5",
+      "fillName": "보색",
+      "place": "below",
+      "scale": 2.5,
+      "tracking": 1
+    },
+    "hyosun": {
+      "name": "일단",
+      "bg": "#2FD4C6",
+      "ink": "#1C2A63",
+      "font": "DOSGothic",
+      "fill": "#F5B8BD",
+      "fillName": "보색",
+      "place": "above",
+      "scale": 2.5
+    },
+    "gaeun": {
+      "name": "새근이",
+      "bg": "#E9EEFB",
+      "ink": "#16265C",
+      "font": "Fusion",
+      "fill": "#BFF2E1",
+      "fillName": "민트",
+      "place": "below",
+      "scale": 3
+    },
+    "eunseol": {
+      "name": "삐",
+      "bg": "#D4FF00",
+      "ink": "#12205C",
+      "font": "DOSPilgi",
+      "fill": "#FFEC8F",
+      "fillName": "노랑",
+      "place": "below",
+      "scale": 2.5,
+      "tracking": 1
+    },
+    "soyeon": {
+      "name": "오히려좋아",
+      "bg": "#FEE14B",
+      "ink": "#12205C",
+      "font": "neodgm",
+      "fill": "#BFF2E1",
+      "fillName": "민트",
+      "place": "above",
+      "scale": 2.5
+    },
+    "minjeong": {
+      "name": "헐",
+      "bg": "#FF4AA0",
+      "ink": "#13203C",
+      "font": "neodgm",
+      "fill": "#FFFFFF",
+      "fillName": "흰색",
+      "place": "above",
+      "scale": 2.5
+    },
+    "seoyoungchae": {
+      "name": "도리",
+      "bg": "#7590E8",
+      "ink": "#111F5E",
+      "font": "neodgm",
+      "fill": "#FFFFFF",
+      "fillName": "흰색",
+      "place": "below",
+      "scale": 2.5
+    },
+    "yunjung": {
+      "name": "BEAT",
+      "bg": "#040B24",
+      "ink": "#040B24",
+      "font": "HBIOS",
+      "fill": "#FFEC8F",
+      "fillName": "노랑",
+      "place": "above",
+      "scale": 2.5
+    }
   }
 }

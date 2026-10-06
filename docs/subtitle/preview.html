@@ -108,10 +108,10 @@ const SCREEN = { w: 320, h: 240 };
 const CHARS = [
   { id: "minseo",       name: "민서",       bg: "#F9503C", ink: "#121212", font: "DOSPilgi",  d: 2.5, fill: "comp", place: "below", live: true },
   { id: "hyosun",       name: "일단",       bg: "#2FD4C6", ink: "#1C2A63", font: "DOSGothic", d: 2.5, fill: "comp", place: "above" },
-  { id: "gaeun",        name: "새근이",     bg: "#E9EEFB", ink: "#16265C", font: "DOSGothic", d: 2.5, fill: "mint", place: "below" },
-  { id: "eunseol",      name: "삐",         bg: "#D4FF00", ink: "#12205C", font: "neodgm",    d: 2.5, fill: "yellow", place: "below" },
+  { id: "gaeun",        name: "새근이",     bg: "#E9EEFB", ink: "#16265C", font: "Fusion", d: 3, fill: "mint", place: "below" },
+  { id: "eunseol",      name: "삐",         bg: "#D4FF00", ink: "#12205C", font: "DOSPilgi",    d: 2.5, fill: "yellow", place: "below" },
   { id: "soyeon",       name: "오히려좋아", bg: "#FEE14B", ink: "#12205C", font: "neodgm",    d: 2.5, fill: "mint", place: "above", compShift: -40 },   // 삐와 보색이 겹쳐서 하늘색 쪽으로
-  { id: "minjeong",     name: "헐",         bg: "#FF4AA0", ink: "#13203C", font: "DOSPilgi",  d: 2.5, fill: "white", place: "above" },
+  { id: "minjeong",     name: "헐",         bg: "#FF4AA0", ink: "#13203C", font: "neodgm",  d: 2.5, fill: "white", place: "above" },
   { id: "seoyoungchae", name: "도리",       bg: "#7590E8", ink: "#111F5E", font: "neodgm",    d: 2.5, fill: "white", place: "below" },
   { id: "yunjung",      name: "BEAT",       bg: "#040B24", ink: "#040B24", font: "HBIOS",     d: 2.5, fill: "yellow", place: "above" },
 ];
@@ -408,7 +408,8 @@ function geometry() {
   const d = opt.d, u = Math.max(1, Math.floor(d));   // 말풍선 도트는 정수 픽셀
   const base = baseMetrics();
   const glyphH = base.asc + base.desc;
-  const lineH = Math.round((glyphH + 3) * d);   // 줄 사이 3도트: 하이라이트 1 + 그림자 1 + 여백 1
+  // 줄 간격 = 글자 높이 + 3도트(하이라이트 1 + 그림자 1 + 여백 1). Fusion처럼 서체 안에 행간이 들어 있으면 네이티브 높이로 잘라서 계산
+  const lineH = Math.round((Math.min(glyphH, FONTS[opt.font].native) + 3) * d);
   const cell = opt.face, T = 6, above = opt.place === "above";
   // 아래: 얼굴 위 · 말풍선 아래 / 위: 말풍선 위 · 얼굴 아래. 꼬리는 항상 얼굴 쪽.
   const faceY = above ? SCREEN.h - 4 - 18 * cell : 4;
@@ -512,7 +513,7 @@ function drawText(g, b, t) {
     lines.forEach((l, i) => {
       let x = left;
       const y = g.textTop + i * g.lineH - scrollPx;
-      if (y + g.lineH < b.y || y > b.y + b.h) return;
+      if (y + g.lineH <= g.textTop || y > b.y + b.h) return;   // 다 올라간 줄은 그리지 않음 (꼬리 잔상 방지)
       for (let k = l.start; k < Math.min(l.end, shown); k++) x = Math.round(x + drawChar(text[k], Math.round(x), y, g, pass));
     });
   }
